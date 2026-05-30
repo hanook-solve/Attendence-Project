@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="160dp"
+            android:background="#1A3C8F"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingEnd="24dp">
+
+            <!-- Icon circle -->
+
+            <LinearLayout
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:background="@drawable/circle_white_alpha"
+                android:gravity="center"
+
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-light"
+                    android:text="✓"
+                    android:textColor="#FFFFFF"
+                    android:textSize="32sp" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="User"
+
+                android:textColor="#FFFFFF"
+                android:textSize="26sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.03" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:text="Staff Attendance System"
+                android:textColor="#A8C0E8"
+                android:textSize="13sp"
+                android:letterSpacing="0.04" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/sign_out_button"
+            android:layout_width="150dp"
+            android:layout_height="40dp"
+            android:layout_gravity="end"
+            android:text="Sign_Out"/>
+
+
+
+    </LinearLayout>
+
+
+</ScrollView>
