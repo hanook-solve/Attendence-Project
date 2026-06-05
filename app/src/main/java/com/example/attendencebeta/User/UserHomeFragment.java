@@ -485,6 +485,7 @@ public class UserHomeFragment extends Fragment {
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
         chipParams.topMargin = dpToPx(8);
+        chipParams.bottomMargin = dpToPx(10);
         tvStatus.setLayoutParams(chipParams);
         tvStatus.setPadding(dpToPx(6), dpToPx(2), dpToPx(6), dpToPx(2));
         tvStatus.setTextSize(9);

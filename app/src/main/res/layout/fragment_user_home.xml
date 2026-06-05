@@ -26,8 +26,8 @@
 
             <!-- Profile circle — shows first letter of name -->
             <LinearLayout
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
                 android:background="@drawable/bg_profile_circle"
                 android:gravity="center">
 
@@ -37,7 +37,7 @@
                     android:layout_height="wrap_content"
                     android:text="T"
                     android:textColor="#1A3C8F"
-                    android:textSize="22sp"
+                    android:textSize="32sp"
                     android:fontFamily="sans-serif-medium" />
 
             </LinearLayout>
@@ -67,6 +67,12 @@
                     android:text="Teacher"
                     android:textColor="#A8C0E8"
                     android:textSize="13sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Class"
+                    android:textColor="#A8C0E8"/>
 
             </LinearLayout>
 
@@ -242,6 +248,9 @@
             android:layout_height="wrap_content"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:layout_margin="5dp"
             android:clipToPadding="false"
             android:scrollbars="none">
 
