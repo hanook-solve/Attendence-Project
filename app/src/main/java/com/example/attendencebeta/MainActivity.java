@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.example.attendencebeta.Admin.AdminHomeFragment;
+import com.example.attendencebeta.User.CalendarFragment;
 import com.example.attendencebeta.User.ProfileFragment;
 import com.example.attendencebeta.User.UserHomeFragment;
 import com.example.attendencebeta.databinding.ActivityMainBinding;
@@ -48,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
 
             // Teacher tabs
             if (id == R.id.nav_home)    selected = new UserHomeFragment();
-            //if (id == R.id.nav_history) selected = new CalendarFragment();
+            if (id == R.id.nav_history) selected = new CalendarFragment();
             if (id == R.id.nav_profile) selected = new ProfileFragment();
 
             // Admin tabs

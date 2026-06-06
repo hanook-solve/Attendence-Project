@@ -2,12 +2,12 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/nav_home"
-        android:icon="@android:drawable/ic_menu_home"
+        android:icon="@android:drawable/ic_menu_today"
         android:title="Home" />
 
     <item
         android:id="@+id/nav_history"
-        android:icon="@android:drawable/ic_menu_today"
+        android:icon="@android:drawable/ic_menu_day"
         android:title="Calendar" />
 
     <item
