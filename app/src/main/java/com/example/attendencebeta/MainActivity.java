@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
 
             // Teacher tabs
             if (id == R.id.nav_home)    selected = new UserHomeFragment();
-            //if (id == R.id.nav_history) selected = new AttendanceHistoryFragment();
+            //if (id == R.id.nav_history) selected = new CalendarFragment();
             if (id == R.id.nav_profile) selected = new ProfileFragment();
 
             // Admin tabs
