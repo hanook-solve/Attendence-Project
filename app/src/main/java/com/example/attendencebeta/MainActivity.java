@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
             if (id == R.id.nav_profile) selected = new ProfileFragment();
 
             // Admin tabs
-            //if (id == R.id.nav_today)    selected = new AdminHomeFragment();
+            if (id == R.id.nav_today)    selected = new AdminHomeFragment();
             //if (id == R.id.nav_settings) selected = new AdminSettingsFragment();
 
             if (selected != null) {

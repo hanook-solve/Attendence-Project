@@ -1,9 +1,6 @@
 package com.example.attendencebeta.User;
 
-import static android.content.Context.MODE_PRIVATE;
-
 import android.Manifest;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -12,7 +9,6 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -22,7 +18,6 @@ import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 
-import com.example.attendencebeta.Login.LoginActivity;
 import com.example.attendencebeta.R;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -56,24 +51,27 @@ public class UserHomeFragment extends Fragment {
     private FusedLocationProviderClient locationClient;
     private static final int LOCATION_CODE = 101;
 
-    // ── School coordinates — update to real values ───────────
-    private static final double SCHOOL_LAT    = 33.6844;
-    private static final double SCHOOL_LNG    = 73.0479;
-    private static final float  RADIUS_METERS = 100f;
-
-    // ── Attendance window ────────────────────────────────────
-    private static final String WINDOW_START = "07:45";
-    private static final String WINDOW_END   = "08:15";
+    // ── Settings — fetched from Firestore ────────────────────
+    private double schoolLat    = 33.6844;  // default fallback
+    private double schoolLng    = 73.0479;  // default fallback
+    private float  radiusMeters = 100f;     // default fallback
+    private String windowStart  = "07:45";  // default fallback
+    private String windowEnd    = "08:15";  // default fallback
+    private String shift2Start  = "";
+    private String shift2End    = "";
+    private boolean twoShifts   = false;
 
     // ── State ────────────────────────────────────────────────
     private boolean conditionLocation = false;
     private boolean conditionTime     = false;
     private boolean alreadyMarked     = false;
 
-
+    // ────────────────────────────────────────────────────────
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_user_home, container, false);
     }
 
@@ -89,11 +87,12 @@ public class UserHomeFragment extends Fragment {
         setupHeader();
         setupDate();
         setupSwipeButton();
-        checkTimeWindow();
-        checkIfAlreadyMarked();
-        requestLocation();
-        loadHistory();
+
+        // loadSettings fetches Firestore values FIRST
+        // then calls all checks after values are ready
+        loadSettings();
     }
+
     // ────────────────────────────────────────────────────────
     // BIND VIEWS
     // ────────────────────────────────────────────────────────
@@ -114,17 +113,14 @@ public class UserHomeFragment extends Fragment {
     }
 
     // ────────────────────────────────────────────────────────
-    // HEADER — name + initial from SharedPrefs
+    // HEADER
     // ────────────────────────────────────────────────────────
     private void setupHeader() {
         SharedPreferences prefs = requireActivity()
                 .getSharedPreferences("app_prefs", requireActivity().MODE_PRIVATE);
-
         String name = prefs.getString("name", "Teacher");
         tvUserName.setText(name);
         tvDesignation.setText("Teacher");
-
-        // Profile initial — first letter of name
         if (!name.isEmpty()) {
             tvProfileInitial.setText(String.valueOf(name.charAt(0)).toUpperCase());
         }
@@ -134,57 +130,77 @@ public class UserHomeFragment extends Fragment {
     // DATE
     // ────────────────────────────────────────────────────────
     private void setupDate() {
-        String date = new SimpleDateFormat("EEEE, MMMM dd", Locale.getDefault()).format(new Date());
+        String date = new SimpleDateFormat("EEEE, MMMM dd", Locale.getDefault())
+                .format(new Date());
         tvDate.setText(date);
+    }
+
+    // ────────────────────────────────────────────────────────
+    // LOAD SETTINGS FROM FIRESTORE
+    // Everything else runs AFTER this completes
+    // ────────────────────────────────────────────────────────
+    private void loadSettings() {
+        db.collection("settings").document("attendance")
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        schoolLat    = doc.getDouble("schoolLat")   != null ? doc.getDouble("schoolLat")              : schoolLat;
+                        schoolLng    = doc.getDouble("schoolLng")   != null ? doc.getDouble("schoolLng")              : schoolLng;
+                        radiusMeters = doc.getLong("radiusMeters")  != null ? doc.getLong("radiusMeters").floatValue() : radiusMeters;
+                        windowStart  = doc.getString("windowStart") != null ? doc.getString("windowStart")            : windowStart;
+                        windowEnd    = doc.getString("windowEnd")   != null ? doc.getString("windowEnd")              : windowEnd;
+                        shift2Start  = doc.getString("shift2Start") != null ? doc.getString("shift2Start")            : shift2Start;
+                        shift2End    = doc.getString("shift2End")   != null ? doc.getString("shift2End")              : shift2End;
+                        twoShifts    = doc.getBoolean("twoShifts")  != null ? doc.getBoolean("twoShifts")             : twoShifts;
+                    }
+                    // Values loaded — now safe to run all checks
+                    checkTimeWindow();
+                    checkIfAlreadyMarked();
+                    requestLocation();
+                    loadHistory();
+                })
+                .addOnFailureListener(e -> {
+                    // Firestore failed — use default values and continue
+                    checkTimeWindow();
+                    checkIfAlreadyMarked();
+                    requestLocation();
+                    loadHistory();
+                });
     }
 
     // ────────────────────────────────────────────────────────
     // SWIPE BUTTON
     // ────────────────────────────────────────────────────────
     private void setupSwipeButton() {
-        // Disable by default — enabled only when both conditions pass
         swipeThumb.setAlpha(0.4f);
 
         swipeThumb.setOnTouchListener((v, event) -> {
-
-            // Block swipe if conditions not met or already marked
             if (!conditionLocation || !conditionTime || alreadyMarked) {
                 showConditionMessage();
                 return true;
             }
 
             switch (event.getAction()) {
-
                 case MotionEvent.ACTION_MOVE:
-                    // Calculate new X position of thumb
                     float newX = event.getRawX()
                             - swipeContainer.getX()
                             - swipeContainer.getPaddingLeft()
                             - (swipeThumb.getWidth() / 2f);
-
-                    // Clamp within container bounds
                     float maxX = swipeContainer.getWidth()
                             - swipeThumb.getWidth()
                             - (swipeContainer.getPaddingLeft() * 2);
-
                     newX = Math.max(0, Math.min(newX, maxX));
                     swipeThumb.setX(newX);
-
-                    // Fade out label as thumb moves right
-                    float progress = newX / maxX;
-                    tvSwipeLabel.setAlpha(1f - progress);
+                    tvSwipeLabel.setAlpha(1f - (newX / maxX));
                     break;
 
                 case MotionEvent.ACTION_UP:
                     float threshold = swipeContainer.getWidth()
                             - swipeThumb.getWidth()
                             - (swipeContainer.getPaddingLeft() * 2);
-
                     if (swipeThumb.getX() >= threshold * 0.85f) {
-                        // ✅ Swiped far enough — mark attendance
                         onSwipeCompleted();
                     } else {
-                        // ❌ Not far enough — reset thumb
                         swipeThumb.animate().x(0).setDuration(250).start();
                         tvSwipeLabel.animate().alpha(1f).setDuration(250).start();
                     }
@@ -212,28 +228,25 @@ public class UserHomeFragment extends Fragment {
     }
 
     private void onSwipeCompleted() {
-        // Snap thumb to end
         float maxX = swipeContainer.getWidth()
                 - swipeThumb.getWidth()
                 - (swipeContainer.getPaddingLeft() * 2);
         swipeThumb.animate().x(maxX).setDuration(150).start();
         tvSwipeLabel.setAlpha(0f);
-
-        // Write to Firestore
         markAttendance();
     }
 
     // ────────────────────────────────────────────────────────
-    // MARK ATTENDANCE — write to Firestore
+    // MARK ATTENDANCE
     // ────────────────────────────────────────────────────────
     private void markAttendance() {
-        // Get location one more time at the moment of marking
         if (ActivityCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
             locationClient.getLastLocation().addOnSuccessListener(location -> {
-                double lat = location != null ? location.getLatitude()  : SCHOOL_LAT;
-                double lng = location != null ? location.getLongitude() : SCHOOL_LNG;
+                // Use fetched schoolLat/schoolLng as fallback — not hardcoded constants
+                double lat = location != null ? location.getLatitude()  : schoolLat;
+                double lng = location != null ? location.getLongitude() : schoolLng;
 
                 String today = todayKey();
                 Map<String, Object> record = new HashMap<>();
@@ -249,7 +262,6 @@ public class UserHomeFragment extends Fragment {
                         .set(record)
                         .addOnSuccessListener(v -> lockAsMarked())
                         .addOnFailureListener(e -> {
-                            // Reset swipe on failure
                             swipeThumb.animate().x(0).setDuration(250).start();
                             tvSwipeLabel.animate().alpha(1f).setDuration(250).start();
                         });
@@ -259,32 +271,24 @@ public class UserHomeFragment extends Fragment {
 
     private void lockAsMarked() {
         alreadyMarked = true;
-
-        // Lock the swipe container
         swipeContainer.setBackgroundResource(R.drawable.bg_swipe_done);
         tvSwipeLabel.setVisibility(View.VISIBLE);
         tvSwipeLabel.setAlpha(1f);
         tvSwipeLabel.setText("✓  Attendance Marked");
         tvSwipeLabel.setTextColor(Color.parseColor("#FFFFFF"));
         swipeThumb.setVisibility(View.GONE);
-
-        // Update status chip
         tvTodayStatus.setText("Present");
         tvTodayStatus.setTextColor(Color.parseColor("#2E7D32"));
         tvTodayStatus.setBackgroundResource(R.drawable.bg_status_present);
-
-        // Update condition message
         tvConditionMessage.setVisibility(View.VISIBLE);
         tvConditionMessage.setText("✓ Attendance marked successfully");
         tvConditionMessage.setTextColor(Color.parseColor("#2E7D32"));
-
-        // Refresh history
         llHistoryCards.removeAllViews();
         loadHistory();
     }
 
     // ────────────────────────────────────────────────────────
-    // CHECK IF ALREADY MARKED TODAY
+    // CHECK IF ALREADY MARKED
     // ────────────────────────────────────────────────────────
     private void checkIfAlreadyMarked() {
         db.collection("attendance")
@@ -294,49 +298,64 @@ public class UserHomeFragment extends Fragment {
                 .get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
-                        String status = doc.getString("status");
                         alreadyMarked = true;
                         lockAsMarked();
+                        String status = doc.getString("status");
                         if ("late".equals(status)) {
                             tvTodayStatus.setText("Late");
                             tvTodayStatus.setTextColor(Color.parseColor("#E65100"));
                             tvTodayStatus.setBackgroundResource(R.drawable.bg_status_late);
                         }
                     } else {
-                        swipeThumb.setAlpha(1f); // unlock thumb visually
+                        swipeThumb.setAlpha(1f);
                     }
                 });
     }
 
     // ────────────────────────────────────────────────────────
-    // TIME WINDOW CHECK
+    // TIME WINDOW — supports two shifts
     // ────────────────────────────────────────────────────────
     private void checkTimeWindow() {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
             Date now   = sdf.parse(sdf.format(new Date()));
-            Date start = sdf.parse(WINDOW_START);
-            Date end   = sdf.parse(WINDOW_END);
-            conditionTime = !now.before(start) && !now.after(end);
+            Date start = sdf.parse(windowStart);
+            Date end   = sdf.parse(windowEnd);
+
+            boolean inShift1 = !now.before(start) && !now.after(end);
+            boolean inShift2 = false;
+
+            if (twoShifts && !shift2Start.isEmpty()) {
+                Date start2 = sdf.parse(shift2Start);
+                Date end2   = sdf.parse(shift2End);
+                inShift2 = !now.before(start2) && !now.after(end2);
+            }
+
+            conditionTime = inShift1 || inShift2;
+
         } catch (Exception e) {
             conditionTime = false;
         }
 
-        if (conditionTime) {
-            dotTime.setBackgroundResource(R.drawable.dot_green);
-            tvTimeWindow.setText("⏰  Window open: " + WINDOW_START + " – " + WINDOW_END);
-            tvTimeWindow.setTextColor(Color.parseColor("#2E7D32"));
-        } else {
-            dotTime.setBackgroundResource(R.drawable.dot_red);
-            tvTimeWindow.setText("⏰  Window closed: " + WINDOW_START + " – " + WINDOW_END);
-            tvTimeWindow.setTextColor(Color.parseColor("#9AAABB"));
-        }
+        String windowText = twoShifts && !shift2Start.isEmpty()
+                ? "⏰  Shift 1: " + windowStart + "–" + windowEnd
+                + "   Shift 2: " + shift2Start + "–" + shift2End
+                : "⏰  Window: " + windowStart + " – " + windowEnd;
 
+        tvTimeWindow.setText(windowText);
+        tvTimeWindow.setTextColor(conditionTime
+                ? Color.parseColor("#2E7D32")
+                : Color.parseColor("#9AAABB")
+        );
+        dotTime.setBackgroundResource(conditionTime
+                ? R.drawable.dot_green
+                : R.drawable.dot_red
+        );
         updateSwipeState();
     }
 
     // ────────────────────────────────────────────────────────
-    // LOCATION
+    // LOCATION — uses fetched schoolLat/schoolLng/radiusMeters
     // ────────────────────────────────────────────────────────
     private void requestLocation() {
         if (ActivityCompat.checkSelfPermission(requireContext(),
@@ -358,15 +377,14 @@ public class UserHomeFragment extends Fragment {
             if (location != null) {
                 float[] result = new float[1];
                 android.location.Location.distanceBetween(
-                        SCHOOL_LAT, SCHOOL_LNG,
+                        schoolLat, schoolLng,   // ← fetched from Firestore
                         location.getLatitude(), location.getLongitude(),
                         result
                 );
-                conditionLocation = result[0] <= RADIUS_METERS;
+                conditionLocation = result[0] <= radiusMeters; // ← fetched from Firestore
             } else {
                 conditionLocation = false;
             }
-
             dotLocation.setBackgroundResource(
                     conditionLocation ? R.drawable.dot_green : R.drawable.dot_red
             );
@@ -396,7 +414,7 @@ public class UserHomeFragment extends Fragment {
     }
 
     // ────────────────────────────────────────────────────────
-    // 7 DAY HISTORY — horizontal scroll cards
+    // 7 DAY HISTORY
     // ────────────────────────────────────────────────────────
     private void loadHistory() {
         SimpleDateFormat keyFmt  = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
@@ -406,9 +424,9 @@ public class UserHomeFragment extends Fragment {
         Calendar cal = Calendar.getInstance();
 
         for (int i = 0; i < 7; i++) {
-            String dateKey  = keyFmt.format(cal.getTime());
-            String dayName  = dayFmt.format(cal.getTime());
-            String dayNum   = dateFmt.format(cal.getTime());
+            String dateKey = keyFmt.format(cal.getTime());
+            String dayName = dayFmt.format(cal.getTime());
+            String dayNum  = dateFmt.format(cal.getTime());
             boolean isToday = i == 0;
 
             db.collection("attendance")
@@ -422,9 +440,7 @@ public class UserHomeFragment extends Fragment {
                             String s = task.getResult().getString("status");
                             status = s != null ? s : "—";
                         }
-
                         final String finalStatus = status;
-
                         if (getActivity() != null) {
                             requireActivity().runOnUiThread(() ->
                                     addHistoryCard(dayName, dayNum, finalStatus, isToday)
@@ -437,7 +453,6 @@ public class UserHomeFragment extends Fragment {
     }
 
     private void addHistoryCard(String day, String date, String status, boolean isToday) {
-        // Card container
         CardView card = new CardView(requireContext());
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 dpToPx(80), dpToPx(100)
@@ -451,13 +466,11 @@ public class UserHomeFragment extends Fragment {
                 : Color.parseColor("#FFFFFF")
         );
 
-        // Inner layout
         LinearLayout inner = new LinearLayout(requireContext());
         inner.setOrientation(LinearLayout.VERTICAL);
         inner.setGravity(android.view.Gravity.CENTER);
         inner.setPadding(dpToPx(8), dpToPx(12), dpToPx(8), dpToPx(12));
 
-        // Day name — Mon, Tue etc
         TextView tvDay = new TextView(requireContext());
         tvDay.setText(day);
         tvDay.setTextSize(11);
@@ -467,7 +480,6 @@ public class UserHomeFragment extends Fragment {
                 : Color.parseColor("#7A8BB0")
         );
 
-        // Date number
         TextView tvDate = new TextView(requireContext());
         tvDate.setText(date);
         tvDate.setTextSize(20);
@@ -478,13 +490,12 @@ public class UserHomeFragment extends Fragment {
                 : Color.parseColor("#0D1B3E")
         );
 
-        // Status chip
         TextView tvStatus = new TextView(requireContext());
         LinearLayout.LayoutParams chipParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        chipParams.topMargin = dpToPx(8);
+        chipParams.topMargin    = dpToPx(8);
         chipParams.bottomMargin = dpToPx(10);
         tvStatus.setLayoutParams(chipParams);
         tvStatus.setPadding(dpToPx(6), dpToPx(2), dpToPx(6), dpToPx(2));
