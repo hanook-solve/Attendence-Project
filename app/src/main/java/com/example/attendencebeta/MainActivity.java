@@ -12,6 +12,8 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.example.attendencebeta.Admin.AdminHomeFragment;
+import com.example.attendencebeta.Admin.AdminProfileFragment;
+import com.example.attendencebeta.Admin.LeaveManagementFragment;
 import com.example.attendencebeta.User.CalendarFragment;
 import com.example.attendencebeta.User.ProfileFragment;
 import com.example.attendencebeta.User.UserHomeFragment;
@@ -54,7 +56,10 @@ public class MainActivity extends AppCompatActivity {
 
             // Admin tabs
             if (id == R.id.nav_today)    selected = new AdminHomeFragment();
+            if (id == R.id.nav_leave)    selected = new LeaveManagementFragment();
             //if (id == R.id.nav_settings) selected = new AdminSettingsFragment();
+            if (id == R.id.nav_profile)  selected = new AdminProfileFragment();
+
 
             if (selected != null) {
                 navigateTo(selected, false); // false = don't add to back stack for bottom nav

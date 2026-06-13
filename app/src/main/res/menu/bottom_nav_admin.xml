@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+
     <item
         android:id="@+id/nav_today"
         android:icon="@android:drawable/ic_menu_today"
         android:title="Today" />
 
     <item
-        android:id="@+id/nav_history"
-        android:icon="@android:drawable/ic_menu_recent_history"
-        android:title="History" />
+        android:id="@+id/nav_leave"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="Leave" />
 
     <item
         android:id="@+id/nav_settings"
         android:icon="@android:drawable/ic_menu_manage"
         android:title="Settings" />
+
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@android:drawable/ic_menu_myplaces"
+        android:title="Profile" />
+
 </menu>
